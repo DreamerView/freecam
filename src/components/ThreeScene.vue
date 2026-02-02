@@ -42,11 +42,20 @@ let player
 let yaw = 0
 let pitch = 0
 let pointerLocked = false
+let lastTouch = null
 
 const keys = {}
 const SPEED = 3
 const SENS = 0.001
 const moveDir = new THREE.Vector3()
+
+const hasPointerLock =
+  'pointerLockElement' in document &&
+  'requestPointerLock' in Element.prototype
+
+const isTouch =
+  'ontouchstart' in window ||
+  navigator.maxTouchPoints > 0
 
 function onKeyDown(e) {
   keys[e.code] = true
@@ -57,6 +66,29 @@ function onKeyUp(e) {
 function onCanvasClick() {
   renderer?.domElement?.requestPointerLock()
 }
+
+function onTouchMove(e) {
+  e.preventDefault()
+  if (!pointerLocked) return
+
+  const t = e.touches[0]
+  if (!lastTouch) {
+    lastTouch = { x: t.clientX, y: t.clientY }
+    return
+  }
+
+  const dx = t.clientX - lastTouch.x
+  const dy = t.clientY - lastTouch.y
+  lastTouch = { x: t.clientX, y: t.clientY }
+
+  yaw -= dx * SENS * 2
+  pitch -= dy * SENS * 2
+  pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch))
+
+  player.rotation.y = yaw
+  camera.rotation.x = pitch
+}
+
 
 /* =====================
    INIT
@@ -109,11 +141,17 @@ function init() {
 
   /* Events */
 
+  if (isTouch) {
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+  }
+
   document.addEventListener('pointerlockchange', onPointerLockChange)
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('keydown', onKeyDown)
   document.addEventListener('keyup', onKeyUp)
-  renderer.domElement.addEventListener('click', onCanvasClick)
+  if (!isTouch) {
+    renderer.domElement.addEventListener('click', onCanvasClick)
+  }
   window.addEventListener('resize', onResize)
 
   /* MODEL with PROGRESS */
@@ -168,6 +206,7 @@ function onPointerLockChange() {
   paused.value = !locked
 
   if (!locked) {
+    lastTouch = null
     keys.KeyW = false
     keys.KeyA = false
     keys.KeyS = false
@@ -225,6 +264,15 @@ function animate() {
    UTILS
 ===================== */
 function resume() {
+  lastTouch = null
+  // 📱 iPad / touch — без pointer lock
+  if (!hasPointerLock || isTouch) {
+    paused.value = false
+    pointerLocked = true
+    return
+  }
+
+  // 🖥 Desktop
   renderer?.domElement?.requestPointerLock()
 }
 
@@ -238,7 +286,10 @@ onMounted(init)
 
 onUnmounted(() => {
   cancelAnimationFrame(rafId)
-
+  if (!isTouch && renderer?.domElement) {
+    renderer.domElement.removeEventListener('click', onCanvasClick)
+  }
+  document.removeEventListener('touchmove', onTouchMove)
   window.removeEventListener('resize', onResize)
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('pointerlockchange', onPointerLockChange)
@@ -246,7 +297,9 @@ onUnmounted(() => {
   document.removeEventListener('keyup', onKeyUp)
 
   if (renderer?.domElement) {
-    renderer.domElement.removeEventListener('click', onCanvasClick)
+    if (!isTouch && renderer?.domElement) {
+      renderer.domElement.removeEventListener('click', onCanvasClick)
+    }
     renderer.dispose()
     renderer.forceContextLoss()
     renderer.domElement.remove()
