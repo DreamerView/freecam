@@ -46,7 +46,8 @@ let lastTouch = null
 
 const keys = {}
 const SPEED = 3
-const SENS = 0.002
+const DPI = window.devicePixelRatio || 1
+const SENS = 0.003 / DPI
 const moveDir = new THREE.Vector3()
 
 const hasPointerLock =
