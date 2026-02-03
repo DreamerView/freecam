@@ -47,7 +47,7 @@ let lastTouch = null
 const keys = {}
 const SPEED = 3
 const DPI = window.devicePixelRatio || 1
-const SENS = 0.003 / DPI
+const SENS = 0.0035 / DPI
 const moveDir = new THREE.Vector3()
 
 const hasPointerLock =
@@ -257,8 +257,13 @@ function move(delta) {
 ===================== */
 let rafId
 
-function animate() {
+let last = 0
+const FPS = 60
+
+function animate(t) {
   rafId = requestAnimationFrame(animate)
+  if (t - last < 1000 / FPS) return
+  last = t
 
   const delta = Math.min(clock.getDelta(), 0.05)
   if (!paused.value) move(delta)
