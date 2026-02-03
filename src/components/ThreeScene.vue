@@ -183,7 +183,10 @@ function init() {
     },
     xhr => {
       if (xhr.total) {
-        progress.value = Math.round((xhr.loaded / xhr.total) * 100)
+        progress.value = Math.min(
+          100,
+          Math.round((xhr.loaded / xhr.total) * 100)
+        )
       }
     },
     err => {
