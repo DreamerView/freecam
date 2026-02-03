@@ -46,7 +46,7 @@ let lastTouch = null
 
 const keys = {}
 const SPEED = 3
-const SENS = 0.001
+const SENS = 0.002
 const moveDir = new THREE.Vector3()
 
 const hasPointerLock =
@@ -205,6 +205,8 @@ function onPointerLockChange() {
   pointerLocked = locked
   paused.value = !locked
 
+  container.value?.classList.toggle('pointer-lock', locked)
+
   if (!locked) {
     lastTouch = null
     keys.KeyW = false
@@ -263,13 +265,17 @@ function animate() {
 /* =====================
    UTILS
 ===================== */
-function resume() {
+async function resume() {
   lastTouch = null
   // 📱 iPad / touch — без pointer lock
   if (!hasPointerLock || isTouch) {
     paused.value = false
     pointerLocked = true
     return
+  }
+
+  if (!document.fullscreenElement) {
+    await container.value.requestFullscreen().catch(() => {})
   }
 
   // 🖥 Desktop
@@ -311,6 +317,14 @@ onUnmounted(() => {
 .scene {
   width: 100vw;
   height: 100vh;
+}
+.scene canvas {
+  position: fixed;
+  inset: 0;
+}
+.scene.pointer-lock,
+.scene.pointer-lock canvas {
+  cursor: none !important;
 }
 
 .overlay {
